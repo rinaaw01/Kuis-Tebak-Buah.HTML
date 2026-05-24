@@ -152,7 +152,9 @@
                 card.innerHTML = `<div class="fruit-image-container">${svgs[opt.key]}</div><div class="choice-label">${labels[i]}</div>`;
                 card.onclick = () => {
                     if(opt.correct) {
-                        playNewSound(true); currentScore += 100;
+                        playNewSound(true); 
+                        // MENGUBAH PENAMBAHAN SKOR MENJADI 10
+                        currentScore += 10; 
                         document.getElementById('score').innerText = currentScore;
                         document.getElementById('explanationText').innerText = data.info;
                         document.getElementById('feedback').style.display = 'block';
