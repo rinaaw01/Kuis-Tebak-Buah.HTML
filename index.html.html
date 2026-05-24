@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kuis Tebak Buah Ceria</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body { 
+            font-family: 'Comic Sans MS', 'Arial', sans-serif; 
+            text-align: center; 
+            background: linear-gradient(135deg, #fef08a 0%, #bbf7d0 100%); 
+            min-height: 100vh; margin: 0; padding: 20px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .header-container {
+            width: 100%; max-width: 800px;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; position: relative;
+        }
+        .main-title { font-size: 32px; color: #1e40af; text-shadow: 2px 2px 0px #fff; margin: 0 auto; flex-grow: 1; }
+        .score-board { 
+            font-size: 20px; font-weight: bold; color: #15803d; background: #ffffff;
+            padding: 10px 20px; border-radius: 50px; border: 3px solid #4ade80;
+            box-shadow: 0 4px 0 #22c55e; position: absolute; right: 0; white-space: nowrap;
+        }
+        .game-container { 
+            width: 100%; max-width: 580px; background: #ffffff; 
+            padding: 30px; border-radius: 30px; box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+            border: 6px solid #4ade80; 
+        }
+        .question-box { background: #f0fdf4; border-radius: 20px; padding: 20px; margin-bottom: 25px; border: 2px solid #bbf7d0; }
+        .question-text { font-size: 20px; color: #1f2937; font-weight: bold; line-height: 1.4; }
+        .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+        .choice-card { 
+            border: 4px solid #f3f4f6; border-radius: 25px; padding: 15px; 
+            cursor: pointer; transition: all 0.2s ease; background: #ffffff; box-shadow: 0 5px 0 #e5e7eb;
+        }
+        .choice-card:hover { transform: translateY(-3px); border-color: #3b82f6; box-shadow: 0 8px 0 #2563eb; }
+        .fruit-image-container { width: 90px; height: 90px; margin: 0 auto 10px auto; }
+        .fruit-svg { width: 100%; height: 100%; }
+        .choice-label { font-weight: bold; color: #4b5563; font-size: 16px; margin-top: 5px; }
+        .feedback { 
+            display: none; margin-top: 25px; padding: 20px; border-radius: 20px; 
+            background-color: #dcfce7; border: 4px solid #22c55e; 
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .btn-next { 
+            padding: 12px 30px; background: linear-gradient(to bottom, #4ade80, #22c55e);
+            color: white; border: none; border-radius: 50px; cursor: pointer; 
+            font-size: 18px; font-weight: bold; box-shadow: 0 4px 0 #16a34a; margin-top: 15px;
+        }
+        .hidden { display: none !important; }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="header-container">
+        <h1 class="main-title">🍎 KUIS TEBAK BUAH 🍌</h1>
+        <div class="score-board">Skor: <span id="score">0</span></div>
+    </div>
+    <div class="game-container">
+        <div id="quiz-section">
+            <div style="margin-bottom: 10px; font-weight: bold; color: #6b7280;">Pertanyaan <span id="currentNumber">1</span>/10</div>
+            <div class="question-box"><div class="question-text" id="question">Memuat...</div></div>
+            <div class="grid-container" id="choices"></div>
+        </div>
+        <div id="feedback" class="feedback">
+            <h2 style="margin-top: 0; color: #166534;">🌟 Selamat anda benar! 🌟</h2>
+            <p id="explanationText" style="font-size: 18px; color: #14532d; font-weight: 500;"></p>
+            <button class="btn-next" onclick="nextQuestion()">Lanjut ➔</button>
+        </div>
+        <div id="finish-screen" class="hidden">
+            <h2>🏆 Keren! Kamu Selesai!</h2>
+            <p>Skor Akhir Kamu:</p>
+            <h1 id="finalScoreDisplay" style="font-size: 60px; color: #5850ec;">0</h1>
+            <button class="btn-next" onclick="location.reload()">Main Lagi 🔄</button>
+        </div>
+    </div>
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playNewSound(isCorrect) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            if (isCorrect) {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+                osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1); 
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+            } else {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+                gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            }
+        }
+
+        const svgs = {
+            apple: `<svg viewBox="0 0 100 100" class="fruit-svg"><circle cx="42" cy="55" r="28" fill="#ef4444"/><circle cx="58" cy="55" r="28" fill="#dc2626"/><path d="M50,32 Q52,20 62,18" fill="#22c55e"/><path d="M50,35 Q48,25 50,15" stroke="#78350f" stroke-width="4" fill="none"/></svg>`,
+            banana: `<svg viewBox="0 0 100 100" class="fruit-svg"><path d="M20,25 Q50,20 75,55 Q85,70 70,80 Q55,85 40,65 Q25,45 20,25" fill="#facc15"/></svg>`,
+            orange: `<svg viewBox="0 0 100 100" class="fruit-svg"><circle cx="50" cy="55" r="32" fill="#f97316"/><path d="M50,23 Q55,12 65,15" fill="#22c55e"/></svg>`,
+            grapes: `<svg viewBox="0 0 100 100" class="fruit-svg"><circle cx="40" cy="40" r="12" fill="#a855f7"/><circle cx="60" cy="40" r="12" fill="#8b5cf6"/><circle cx="50" cy="55" r="12" fill="#7c3aed"/></svg>`,
+            watermelon: `<svg viewBox="0 0 100 100" class="fruit-svg"><path d="M15,45 A35,35 0 0,0 85,45 Z" fill="#ef4444" transform="rotate(180 50 45)"/><path d="M10,45 A40,40 0 0,0 90,45" stroke="#22c55e" stroke-width="8" fill="none" transform="rotate(180 50 45)"/></svg>`,
+            strawberry: `<svg viewBox="0 0 100 100" class="fruit-svg"><path d="M50,85 Q20,55 25,35 Q30,15 50,20 Q70,15 75,35 Q80,55 50,85 Z" fill="#f43f5e"/><path d="M50,22 Q40,12 35,20" fill="#22c55e"/></svg>`,
+            pineapple: `<svg viewBox="0 0 100 100" class="fruit-svg"><path d="M35,40 Q30,65 50,85 Q70,65 65,40 Z" fill="#eab308"/><path d="M50,40 Q40,15 35,10" fill="#22c55e"/></svg>`,
+            pear: `<svg viewBox="0 0 100 100" class="fruit-svg"><path d="M50,25 Q35,45 30,60 A20,20 0 0,0 70,60 Q65,45 50,25 Z" fill="#a3e635"/></svg>`,
+            cherry: `<svg viewBox="0 0 100 100" class="fruit-svg"><circle cx="35" cy="65" r="15" fill="#ef4444"/><circle cx="65" cy="65" r="15" fill="#ef4444"/><path d="M35,50 Q45,30 50,20 L65,50" stroke="#78350f" stroke-width="3" fill="none"/></svg>`,
+            mango: `<svg viewBox="0 0 100 100" class="fruit-svg"><path d="M30,50 Q30,20 60,30 Q80,40 70,70 Q60,90 40,80 Q20,70 30,50" fill="#fbbf24"/></svg>`
+        };
+
+        const quizData = [
+            { q: "Aku merah, bulat, dan renyah. Buah apa aku?", ans: "apple", info: "Apel sangat bagus untuk kesehatan gigi dan mengandung banyak serat!" },
+            { q: "Aku kuning, panjang, dan disukai monyet. Buah apa aku?", ans: "banana", info: "Pisang memberikan energi yang banyak supaya kamu kuat beraktivitas!" },
+            { q: "Aku oranye dan punya banyak Vitamin C. Buah apa aku?", ans: "orange", info: "Jeruk membantu sistem kekebalan tubuhmu agar tidak gampang sakit!" },
+            { q: "Aku ungu, kecil, dan tumbuh merambat. Buah apa aku?", ans: "grapes", info: "Anggur sangat lezat dan bisa diolah menjadi kismis yang manis!" },
+            { q: "Kulitku hijau, isiku merah, dan banyak air. Buah apa aku?", ans: "watermelon", info: "Semangka mengandung banyak air yang bisa menghilangkan dahaga!" },
+            { q: "Aku merah kecil dan punya bintik hitam. Buah apa aku?", ans: "strawberry", info: "Stroberi adalah buah yang kaya antioksidan dan sangat segar!" },
+            { q: "Kulitku tajam dan aku punya mahkota. Buah apa aku?", ans: "pineapple", info: "Nanas adalah buah tropis yang kaya akan vitamin!" },
+            { q: "Bentukku seperti lonceng, kulitku hijau. Buah apa aku?", ans: "pear", info: "Buah Pir sangat manis dan memiliki tekstur daging yang khas!" },
+            { q: "Aku kecil, merah, sering ada di hiasan kue. Buah apa aku?", ans: "cherry", info: "Ceri mengandung nutrisi penting yang baik untuk kesehatan!" },
+            { q: "Dagingku oranye, manis, dan lembut. Buah apa aku?", ans: "mango", info: "Mangga sangat kaya akan vitamin A yang bagus untuk mata!" }
+        ];
+
+        let currentScore = 0, currentIdx = 0;
+
+        function loadQuestion() {
+            const data = quizData[currentIdx];
+            document.getElementById('currentNumber').innerText = currentIdx + 1;
+            document.getElementById('question').innerText = data.q;
+            document.getElementById('feedback').style.display = 'none';
+            const container = document.getElementById('choices');
+            container.innerHTML = ''; container.style.pointerEvents = 'auto';
+            const labels = ["Pilihan A", "Pilihan B", "Pilihan C", "Pilihan D"];
+            const keys = Object.keys(svgs);
+            const options = [{key: data.ans, correct: true}];
+            while(options.length < 4) {
+                const rand = keys[Math.floor(Math.random() * keys.length)];
+                if(!options.find(o => o.key === rand)) options.push({key: rand, correct: false});
+            }
+            options.sort(() => Math.random() - 0.5);
+            options.forEach((opt, i) => {
+                const card = document.createElement('div');
+                card.className = 'choice-card';
+                card.innerHTML = `<div class="fruit-image-container">${svgs[opt.key]}</div><div class="choice-label">${labels[i]}</div>`;
+                card.onclick = () => {
+                    if(opt.correct) {
+                        playNewSound(true); currentScore += 100;
+                        document.getElementById('score').innerText = currentScore;
+                        document.getElementById('explanationText').innerText = data.info;
+                        document.getElementById('feedback').style.display = 'block';
+                        container.style.pointerEvents = 'none';
+                    } else {
+                        playNewSound(false); card.style.borderColor = '#ef4444';
+                    }
+                };
+                container.appendChild(card);
+            });
+        }
+
+        function nextQuestion() {
+            currentIdx++;
+            if(currentIdx < quizData.length) loadQuestion();
+            else {
+                document.getElementById('quiz-section').classList.add('hidden');
+                document.getElementById('feedback').classList.add('hidden');
+                document.getElementById('finish-screen').classList.remove('hidden');
+                document.getElementById('finalScoreDisplay').innerText = currentScore;
+            }
+        }
+        loadQuestion();
+    </script>
+</body>
+</html>
